@@ -23,6 +23,21 @@ if [ -d .git ]; then
   exit 1
 fi
 
+# Identity must be set before the first commit. Without it git rejects every
+# commit, and a `|| true` on the commit swallows that -- the script reported
+# "History built" over fourteen rejections on its first real use. Checking up
+# front turns a silent no-op into one clear message.
+if ! git config user.email >/dev/null 2>&1 && ! git config --global user.email >/dev/null 2>&1; then
+  echo "ERROR: git identity not set. Commits would be silently rejected." >&2
+  echo "" >&2
+  echo "  git config --global user.name  \"Your Name\"" >&2
+  echo "  git config --global user.email \"you@example.com\"" >&2
+  echo "" >&2
+  echo "Use the address on your GitHub account, or commits will not be" >&2
+  echo "attributed to your profile." >&2
+  exit 1
+fi
+
 git init -q
 git config core.hooksPath .githooks
 chmod +x .githooks/* scripts/*.sh 2>/dev/null || true
@@ -30,9 +45,20 @@ chmod +x .githooks/* scripts/*.sh 2>/dev/null || true
 commit() {
   local msg="$1"; shift
   git add "$@" 2>/dev/null || true
-  # --no-verify: the hook scans the whole staged file set on every commit and
-  # this script stages known-clean files it has already checked.
-  git commit -q --no-verify -m "$msg" || true
+
+  # Nothing staged is fine -- a later group may own these files already.
+  if git diff --cached --quiet; then
+    return 0
+  fi
+
+  # But a commit that HAD staged content and still failed is a real error,
+  # not something to swallow.
+  # --no-verify: the hook scans the whole staged set on every commit and this
+  # script stages files it has already checked.
+  if ! git commit -q --no-verify -m "$msg"; then
+    echo "ERROR: commit failed: ${msg%%$'\n'*}" >&2
+    exit 1
+  fi
 }
 
 # --- 1. scaffolding -------------------------------------------------------
@@ -257,10 +283,18 @@ lesson cost three separate debugging rounds before it generalized." \
 
 # anything not yet captured
 git add -A
-git commit -q --no-verify -m "chore: remaining project files" 2>/dev/null || true
+if ! git diff --cached --quiet; then
+  git commit -q --no-verify -m "chore: remaining project files"
+fi
+
+count=$(git rev-list --count HEAD)
+if [ "$count" -lt 10 ]; then
+  echo "ERROR: only $count commits were created. Expected 14+." >&2
+  exit 1
+fi
 
 echo
-echo "History built:"
+echo "History built ($count commits):"
 git log --oneline
 echo
 echo "Next:"

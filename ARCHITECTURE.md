@@ -431,3 +431,28 @@ labels: a fine-grained token with Issues write but no push access can create
 issues and nothing adjacent. `Contents: Read and write` grants push access and
 restores both labels and comments. The system works without it, which is why
 the distinction between fatal and degraded had to exist in the first place.
+
+### Appendix: a tenth instance of the same lesson
+
+`scripts/init-history.sh` reported "History built" having created zero
+commits. Git had no `user.email` configured, so every `git commit` was
+rejected -- and each one ended in `|| true`, which turned fourteen failures
+into silence.
+
+That guard was there for a reason: a commit group whose files were already
+captured by an earlier group stages nothing, and `git commit` exits non-zero
+on an empty commit. Swallowing *that* is correct. Swallowing every other
+failure along with it is not.
+
+The fix separates the two cases. Nothing staged returns quietly; a commit that
+had staged content and still failed aborts with the message. The script also
+checks identity up front rather than discovering it fourteen times, and
+asserts the final commit count before claiming success.
+
+This is the same shape as three earlier defects -- GitHub dropping labels on a
+201, the provider returning 200 with a truncated tool call, a 403 that only
+said "403". **A failure reported as a success is worse than a loud crash**,
+because nothing prompts anyone to look. Four separate instances across one
+project, in code written at four different times, which is a reasonable
+argument that the pattern is worth checking for deliberately rather than
+hoping to notice.

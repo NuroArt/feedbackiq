@@ -166,15 +166,45 @@ See `evals/README.md` for the labelling rules and why specific adversarial items
 
 ## It has actually been run
 
-Three artifacts from a live session against a real repository and Slack workspace.
+Against a real repository and a real Slack workspace, not a mock.
 
-| | |
-| --- | --- |
-| ![Duplicate issues before the fix](docs/images/01-duplicates-before.png) | **Before.** The same two problems filed twice, eight minutes apart — the model re-worded each theme between runs, so a hash of the name produced different fingerprints. |
-| ![Deduplicated issues after the fix](docs/images/02-deduplicated-after.png) | **After.** One issue per real problem, each carrying comments from later runs. |
-| ![Issue comment showing the similarity match](docs/images/03-match-comment.png) | **The match, explained.** Each comment records which theme matched and at what similarity, so a reviewer can audit the decision rather than trust it. |
+The failure mode this had to survive: **the model names the same theme
+differently on every run.** Across one session it produced six names for the
+same two problems —
 
-Across one session the model produced six distinct names for the same two problems — `CSV upload crashes losing data` / `and loses data` / `and data loss` / `causing data loss` / `with data loss`, and `Export fails with server error` / `Report export fails with error` / `with errors`. All matched; zero duplicates.
+```
+CSV upload crashes losing data   /  and loses data  /  and data loss
+                                 /  causing data loss  /  with data loss
+Export fails with server error   /  Report export fails with error  /  with errors
+```
+
+A fingerprint built from the theme name produced a different hash each time,
+so a job designed to run every morning filed a fresh set of duplicates every
+morning. Matching on normalized content words instead, all six variants resolve
+to the same issue: scores ran 0.60–1.00 against each other and 0.00 against
+unrelated themes.
+
+Proof is `make e2e-live`, which runs the pipeline twice and fails the build if
+the second run files anything:
+
+```
+run 1   github_candidates_loaded  count=8
+        comment_on_issue   Matched existing issue #18 (similarity 1.00)
+        comment_on_issue   Matched existing issue #19 (similarity 0.60)
+        comment_on_issue   Matched existing issue #20 (similarity 1.00)
+        comment_on_issue   Matched existing issue #21 (similarity 1.00)
+        post_digest        Posted digest with 8 themes.
+
+run 2   (same four matches, zero issues created)
+
+PASS  idempotency holds: run 2 matched 4 existing issue(s) and filed nothing new.
+```
+
+Every match records its similarity score in the issue comment, so a reviewer
+can audit why two themes were treated as one rather than take it on trust.
+
+The generated issues are public: **[NuroArt/feedbackiq-demo](https://github.com/NuroArt/feedbackiq-demo/issues)**
+— four issues for four themes, each carrying comments from successive runs.
 
 ## Known gaps
 

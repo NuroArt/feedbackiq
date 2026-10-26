@@ -22,7 +22,13 @@ Demo repo: `NuroArt/feedbackiq-demo` (issues #18–#21 are the good ones).
 3. ~~`.env` over shell exports~~ — documented in the Quickstart.
 
 Remaining from that list: **drop the three screenshots into `docs/images/`**
-(filenames in `docs/images/README.md`) and push.
+(filenames in `docs/images/README.md`), then commit and push them.
+
+```bash
+git add docs/images/*.png
+git commit -m "docs: screenshots from the live run"
+git push
+```
 
 **Token expiry:** the GitHub PAT expires **Jan 1 2027**, the Anthropic key
 doesn't. Put a reminder somewhere; a 401 mid-demo is avoidable.
