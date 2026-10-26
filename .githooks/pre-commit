@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Block commits containing credentials.
+#
+# Installed by scripts/setup-hooks.sh. This is a backstop, not a security
+# control -- it catches the realistic accident (pasting a key into a config
+# file or a doc) rather than a determined mistake. The real protections are
+# .gitignore and never putting secrets in files the repo tracks.
+#
+# Bypass with --no-verify if you genuinely need to (e.g. committing a test
+# fixture that looks like a key).
+
+set -euo pipefail
+
+RED=$'\033[31m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
+
+# Real credential shapes. Deliberately specific: a pattern that fires on
+# "sk-ant-" alone would hit every doc that mentions the env var, and a hook
+# people routinely bypass protects nothing.
+PATTERNS=(
+  'sk-ant-[A-Za-z0-9_-]{24,}'
+  'github_pat_[A-Za-z0-9_]{30,}'
+  'ghp_[A-Za-z0-9]{36}'
+  'hooks\.slack\.com/services/T[A-Za-z0-9]{6,}/B[A-Za-z0-9]{6,}/[A-Za-z0-9]{20,}'
+  'AKIA[0-9A-Z]{16}'
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+)
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+found=0
+while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  for pattern in "${PATTERNS[@]}"; do
+    if git show ":$file" 2>/dev/null | grep -nIEq -e "$pattern"; then
+      printf '%sBLOCKED%s %s matches a credential pattern:\n' "$RED" "$RESET" "$file"
+      git show ":$file" | grep -nIE -e "$pattern" | head -3 | sed 's/^/    /'
+      found=1
+    fi
+  done
+done <<< "$staged"
+
+# .env is gitignored, but an explicit `git add -f` would slip past that.
+if echo "$staged" | grep -qE '(^|/)\.env$'; then
+  printf '%sBLOCKED%s .env is staged. It holds live credentials.\n' "$RED" "$RESET"
+  found=1
+fi
+
+if [ "$found" -eq 1 ]; then
+  printf '\n%sCommit aborted.%s Remove the secret, then:\n' "$YELLOW" "$RESET"
+  printf '  git restore --staged <file>\n'
+  printf '  # if it is already committed, the key must be rotated -- rewriting\n'
+  printf '  # history does not un-leak a pushed secret.\n'
+  exit 1
+fi
+
+exit 0

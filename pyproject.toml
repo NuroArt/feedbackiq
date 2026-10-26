@@ -1,0 +1,28 @@
+[project]
+name = "feedbackiq"
+version = "1.0.0"
+description = "LLM-assisted customer feedback triage with GitHub and Slack routing."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 95
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "RUF"]
+ignore = ["S101", "B008"]  # assert in tests; FastAPI Depends() in defaults
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = false

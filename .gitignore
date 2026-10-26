@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+report.xml
+eval-report.json
+eval-report.md
+*.sarif
+.terraform/
+*.tfstate
+*.tfstate.*
+.DS_Store
