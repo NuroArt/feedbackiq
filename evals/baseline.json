@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-10-25T22:36:59.468927+00:00",
+  "profile": "stub",
+  "model": "stub",
+  "repeats": 3,
+  "metrics": {
+    "coverage": {
+      "mean": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "spread": 0.0,
+      "runs": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "sentiment_accuracy": {
+      "mean": 0.42,
+      "min": 0.42,
+      "max": 0.42,
+      "spread": 0.0,
+      "runs": [
+        0.42,
+        0.42,
+        0.42
+      ]
+    },
+    "category_accuracy": {
+      "mean": 0.44,
+      "min": 0.44,
+      "max": 0.44,
+      "spread": 0.0,
+      "runs": [
+        0.44,
+        0.44,
+        0.44
+      ]
+    },
+    "category_macro_f1": {
+      "mean": 0.4735,
+      "min": 0.4735,
+      "max": 0.4735,
+      "spread": 0.0,
+      "runs": [
+        0.4735,
+        0.4735,
+        0.4735
+      ]
+    },
+    "severity_mae": {
+      "mean": 1.6,
+      "min": 1.6,
+      "max": 1.6,
+      "spread": 0.0,
+      "runs": [
+        1.6,
+        1.6,
+        1.6
+      ]
+    },
+    "severity_within_1": {
+      "mean": 0.4,
+      "min": 0.4,
+      "max": 0.4,
+      "spread": 0.0,
+      "runs": [
+        0.4,
+        0.4,
+        0.4
+      ]
+    },
+    "severity_exact": {
+      "mean": 0.14,
+      "min": 0.14,
+      "max": 0.14,
+      "spread": 0.0,
+      "runs": [
+        0.14,
+        0.14,
+        0.14
+      ]
+    },
+    "severity_bias": {
+      "mean": -1.56,
+      "min": -1.56,
+      "max": -1.56,
+      "spread": 0.0,
+      "runs": [
+        -1.56,
+        -1.56,
+        -1.56
+      ]
+    },
+    "theme_ari": {
+      "mean": 0.0566,
+      "min": 0.0566,
+      "max": 0.0566,
+      "spread": 0.0,
+      "runs": [
+        0.0566,
+        0.0566,
+        0.0566
+      ]
+    }
+  }
+}

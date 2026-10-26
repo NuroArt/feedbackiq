@@ -1,0 +1,49 @@
+{
+  "_comment": "Minimum acceptable scores per profile. 'live' is calibrated from the first real run against claude-sonnet-5-5 (2026-10-25, 3 repeats, 50 items): each floor sits a few points under the measured mean, with the margin sized from that metric's observed spread. 'stub' sits just below the keyword analyzer's measured scores -- it is a smoke test that the harness still computes real numbers over the real file, NOT a quality claim. Tolerances are subtracted from the committed baseline before comparing, so run-to-run variance doesn't fail a build.",
+  "live": {
+    "sentiment_accuracy": 0.94,
+    "category_accuracy": 0.92,
+    "category_macro_f1": 0.92,
+    "severity_within_1": 0.96,
+    "severity_mae": 0.55,
+    "theme_ari": 0.88,
+    "coverage": 1.0,
+    "regression_tolerance": 0.05,
+    "_measured_2026_10_25": {
+      "_note": "Two independent 3-repeat runs. Floors are set under the WORST of the two, not the best -- calibrating to a single lucky run is how a gate starts failing on its own noise. Tolerance is ~2.5x the largest spread seen on any accuracy metric (0.020).",
+      "run_1": {
+        "sentiment_accuracy": 0.980, "category_accuracy": 0.980,
+        "category_macro_f1": 0.986, "severity_within_1": 1.0,
+        "severity_mae": 0.280, "theme_ari": 0.966, "coverage": 1.0,
+        "spread": {"severity_mae": 0.140, "_others": 0.0}
+      },
+      "run_2": {
+        "sentiment_accuracy": 0.973, "category_accuracy": 0.973,
+        "category_macro_f1": 0.981, "severity_within_1": 1.0,
+        "severity_mae": 0.293, "theme_ari": 0.966, "coverage": 1.0,
+        "spread": {"sentiment_accuracy": 0.020, "category_accuracy": 0.020,
+                   "category_macro_f1": 0.016, "severity_mae": 0.080}
+      },
+      "sentiment_accuracy": 0.973, "category_accuracy": 0.973,
+      "category_macro_f1": 0.981, "severity_within_1": 1.0,
+      "severity_mae": 0.293, "theme_ari": 0.966, "coverage": 1.0
+    },
+    "regression_tolerance_overrides": {
+      "_why": "severity_mae is ordinal and moves far more between runs than the accuracy metrics (observed spread 0.14 vs 0.0). The global 3-point tolerance would fail the nightly job on ordinary noise, which is how a gate stops being trusted and gets disabled. Sized at roughly 2x the observed spread.",
+      "severity_mae": 0.3
+    }
+  },
+  "stub": {
+    "sentiment_accuracy": 0.4,
+    "category_accuracy": 0.4,
+    "category_macro_f1": 0.4,
+    "severity_within_1": 0.35,
+    "severity_mae": 2.0,
+    "theme_ari": 0.04,
+    "coverage": 1.0,
+    "regression_tolerance": 0.0
+  },
+  "_direction": {
+    "severity_mae": "lower_is_better"
+  }
+}
