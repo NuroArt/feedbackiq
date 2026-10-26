@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FeedbackIQ</title>
+<style>
+  :root{
+    --bg:#06080f; --panel:#0d1220; --line:#1c2740; --ink:#e8eefc;
+    --muted:#8ea0c4; --accent:#2f7cff; --glow:#49e3ff;
+    --warn:#ffb020; --bad:#ff4d6a; --ok:#2fd27a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(900px 500px at 15% -10%, #12224a 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;}
+  .wrap{max-width:1060px;margin:0 auto;padding:40px 20px 80px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:26px;margin:0;letter-spacing:-.02em}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--glow);box-shadow:0 0 12px var(--glow)}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 26px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  textarea{width:100%;min-height:190px;background:#070b14;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:12px;
+    font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  button{background:linear-gradient(180deg,var(--accent),#1a56c9);color:#fff;border:0;
+    border-radius:10px;padding:10px 18px;font-weight:650;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:500}
+  label{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px}
+  input[type=text]{background:#070b14;border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:8px 10px;font-size:13px;width:190px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0}
+  .stat{background:#070b14;border:1px solid var(--line);border-radius:10px;padding:12px}
+  .stat b{display:block;font-size:22px;letter-spacing:-.02em}
+  .stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.09em}
+  .theme{border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:10px;padding:14px;margin-bottom:10px;background:#070b14}
+  .theme.sev5,.theme.sev4{border-left-color:var(--bad)}
+  .theme.sev3{border-left-color:var(--warn)}
+  .theme h3{margin:0 0 6px;font-size:16px}
+  .meta{color:var(--muted);font-size:12px}
+  .quote{color:#b9c8e6;font-size:13px;border-left:2px solid var(--line);
+    padding-left:10px;margin:8px 0 0}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;
+    border:1px solid var(--line);color:var(--muted);margin-right:6px}
+  .err{border-color:var(--bad);color:#ffc9d3}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:26px 0 10px}
+  pre{white-space:pre-wrap;margin:0;font:13px/1.6 inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><span class="dot"></span><h1>FeedbackIQ</h1>
+    <span class="pill" id="mode">checking…</span></header>
+  <p class="sub">Paste raw customer feedback. The pipeline classifies it, clusters themes,
+    files GitHub issues above the severity threshold, and posts a Slack digest.</p>
+
+  <div class="panel">
+    <textarea id="input" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="run">Run analysis</button>
+      <button class="ghost" id="sample">Load sample</button>
+      <label><input type="checkbox" id="dry" checked> dry run (no writes)</label>
+      <label>API key <input type="text" id="key" placeholder="optional"></label>
+    </div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const SAMPLE = [
+  "The export button throws a 500 error every time I pick more than 2 months of data. Lost an hour.",
+  "Dashboard takes 25 seconds to load in the morning. It used to be instant.",
+  "I cannot find where to change my billing email. Spent 10 minutes clicking around.",
+  "Love the new reporting view, genuinely saves me time every week.",
+  "Any chance of a Salesforce integration? We're copying records by hand.",
+  "App crashed twice today while uploading a CSV. Data never arrived.",
+  "Pricing jumped at renewal with no warning and support took 4 days to reply.",
+  "The docs for the webhooks API are missing the retry behaviour entirely."
+].join("\n");
+
+$("sample").onclick = () => { $("input").value = SAMPLE; };
+
+fetch("/readyz").then(r => r.json()).then(d => {
+  $("mode").textContent = `llm: ${d.llm} · github: ${d.github} · slack: ${d.slack}`;
+}).catch(() => { $("mode").textContent = "offline"; });
+
+$("run").onclick = async () => {
+  const lines = $("input").value.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!lines.length) { $("out").innerHTML = card("Add at least one line of feedback.", true); return; }
+  $("run").disabled = true; $("out").innerHTML = card("Running pipeline…");
+  try {
+    const headers = {"Content-Type": "application/json"};
+    if ($("key").value) headers["X-API-Key"] = $("key").value;
+    const res = await fetch("/v1/feedback/analyze", {
+      method: "POST", headers,
+      body: JSON.stringify({
+        items: lines.map((text, i) => ({ id: `ui-${i+1}`, text, source: "web-ui" })),
+        dry_run: $("dry").checked
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) { $("out").innerHTML = card(`${data.error}: ${data.message}`, true); return; }
+    render(data);
+  } catch (e) {
+    $("out").innerHTML = card(String(e), true);
+  } finally { $("run").disabled = false; }
+};
+
+const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const card = (msg, bad) => `<div class="panel ${bad ? "err" : ""}" style="margin-top:18px">${esc(msg)}</div>`;
+
+function render(d) {
+  const m = d.metrics;
+  const stats = [
+    ["items", m.items_analyzed], ["themes", m.themes],
+    ["llm calls", m.llm_calls], ["tokens", m.input_tokens + m.output_tokens],
+    ["duration", Math.round(m.total_duration_ms) + " ms"]
+  ].map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${k}</span></div>`).join("");
+
+  const themes = d.themes.map(t => `
+    <div class="theme sev${t.max_severity}">
+      <h3>${esc(t.name)}</h3>
+      <div class="meta">
+        <span class="pill">${esc(t.category)}</span>
+        ${t.item_count} reports · severity ${t.max_severity}/5 ·
+        ${Math.round(t.negative_share*100)}% negative · priority ${t.priority_score}
+      </div>
+      ${t.example_quotes.map(q => `<p class="quote">${esc(q)}</p>`).join("")}
+    </div>`).join("");
+
+  const actions = d.actions.map(a => `<div class="meta" style="margin-bottom:6px">
+      <span class="pill">${esc(a.provider)}</span>
+      <b>${esc(a.status)}</b> — ${esc(a.detail || "")}
+      ${a.target ? ` <a href="${esc(a.target)}" style="color:var(--glow)">link</a>` : ""}
+    </div>`).join("");
+
+  $("out").innerHTML = `
+    <div class="grid">${stats}</div>
+    <div class="panel"><pre>${esc(d.executive_summary)}</pre></div>
+    <h2>Themes</h2>${themes}
+    <h2>Actions</h2><div class="panel">${actions}</div>
+    <h2>Run</h2><div class="panel meta">run_id <code>${esc(d.run_id)}</code> · mode ${esc(d.mode)}</div>`;
+}
+</script>
+</body>
+</html>

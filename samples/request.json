@@ -1,0 +1,16 @@
+{
+  "product_context": "B2B analytics SaaS. Users build dashboards and export reports.",
+  "dry_run": true,
+  "items": [
+    {"id": "zd-1041", "text": "The export button throws a 500 error every time I select more than two months of data. I lost an hour of work.", "source": "zendesk", "customer_tier": "enterprise"},
+    {"id": "zd-1042", "text": "Export is completely broken for us. Error screen, nothing downloads.", "source": "zendesk", "customer_tier": "pro"},
+    {"id": "nps-88", "text": "Dashboard takes about 25 seconds to load every morning. It used to be instant.", "source": "nps", "customer_tier": "enterprise"},
+    {"id": "nps-91", "text": "Everything is slow after the last update, charts time out constantly.", "source": "nps", "customer_tier": "pro"},
+    {"id": "app-17", "text": "I cannot find where to change my billing email. Spent ten minutes clicking around settings.", "source": "in_app", "customer_tier": "free"},
+    {"id": "app-18", "text": "Love the new reporting view, genuinely saves me time every week.", "source": "in_app", "customer_tier": "pro"},
+    {"id": "app-19", "text": "Any chance of a Salesforce integration? We are copying records across by hand.", "source": "in_app", "customer_tier": "enterprise"},
+    {"id": "zd-1055", "text": "App crashed twice today while uploading a CSV and the data never arrived.", "source": "zendesk", "customer_tier": "enterprise"},
+    {"id": "zd-1061", "text": "Pricing jumped at renewal with no warning and support took four days to reply.", "source": "zendesk", "customer_tier": "pro"},
+    {"id": "gh-204", "text": "The documentation for the webhooks API is missing the retry behaviour entirely.", "source": "github", "customer_tier": "free"}
+  ]
+}
