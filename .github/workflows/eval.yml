@@ -1,0 +1,149 @@
+name: eval
+
+# Why this is a separate workflow from ci.yml: it costs money and needs a real
+# API key, so it must not run on every push. It runs nightly, on demand, and on
+# a PR only when someone applies the `run-eval` label — which is the signal that
+# the PR touched a prompt, the model, or the schema.
+on:
+  schedule:
+    - cron: "0 7 * * *"          # 07:00 UTC nightly
+  workflow_dispatch:
+    inputs:
+      repeats:
+        description: "Passes over the golden set (higher = tighter variance estimate)"
+        default: "3"
+      update_baseline:
+        description: "Accept these scores as the new baseline"
+        type: boolean
+        default: false
+  pull_request:
+    types: [labeled, synchronize]
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Always-free guard: proves the harness itself still works, on every trigger,
+  # before anything spends tokens. If the scorer is broken, the paid run is
+  # meaningless anyway.
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Unit-test the scorers and golden set
+        run: pytest tests/test_evals.py -v
+      - name: Smoke the runner end to end (stub profile, no spend)
+        run: python -m evals.runner --profile stub --repeats 1
+
+  golden-set:
+    needs: harness
+    # Skip the paid run on PRs that aren't labelled for it.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'run-eval')
+    runs-on: ubuntu-latest
+    environment: eval          # holds ANTHROPIC_API_KEY
+    permissions:
+      contents: read
+      pull-requests: write     # to post the result comment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+
+      - name: Run the golden-set eval
+        id: eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # continue-on-error so the report is always published; the gate below
+        # is what actually fails the job. A failing eval you can't read is
+        # worse than no eval.
+        continue-on-error: true
+        run: |
+          python -m evals.runner \
+            --profile live \
+            --repeats "${{ github.event.inputs.repeats || 3 }}" \
+            --out eval-report.json \
+            --markdown eval-report.md
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to the job summary
+        if: always()
+        run: cat eval-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report-${{ github.run_number }}
+          path: |
+            eval-report.json
+            eval-report.md
+          retention-days: 90     # keeps a quarter of quality history
+
+      - name: Comment the result on the PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('eval-report.md', 'utf8');
+            const marker = '<!-- golden-set-eval -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            // Update the existing comment instead of stacking a new one per push.
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.data.find(c => c.body.includes(marker));
+            const payload = `${marker}\n${body}`;
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: payload });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body: payload });
+            }
+
+      - name: Open an issue if the nightly run regressed
+        if: failure() || (always() && steps.eval.outcome == 'failure' && github.event_name == 'schedule')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('eval-report.md', 'utf8');
+            await github.rest.issues.create({
+              ...context.repo,
+              title: `Golden-set eval regression (${new Date().toISOString().slice(0,10)})`,
+              labels: ['eval-regression'],
+              body,
+            });
+
+      - name: Gate
+        if: steps.eval.outcome == 'failure'
+        run: |
+          echo "::error::Golden-set eval failed. See the job summary for the metric and the confusion matrix."
+          exit 1
+
+      # Baseline updates are explicit and manual. An auto-updating baseline
+      # ratchets downward silently and defeats the whole purpose.
+      - name: Update baseline
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.update_baseline == 'true' &&
+          steps.eval.outcome == 'success'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python -m evals.runner --profile live --repeats 3 --update-baseline
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add evals/baseline.json
+          git commit -m "chore(evals): update golden-set baseline"
+          git push

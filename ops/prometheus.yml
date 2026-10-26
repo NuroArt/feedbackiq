@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: feedbackiq
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+
+# Starter alert rules — load with `rule_files` once Alertmanager is wired up.
+# groups:
+#   - name: feedbackiq
+#     rules:
+#       - alert: LLMErrorRateHigh
+#         expr: |
+#           sum(rate(feedbackiq_llm_calls_total{outcome!="success"}[5m]))
+#             / sum(rate(feedbackiq_llm_calls_total[5m])) > 0.1
+#         for: 10m
+#       - alert: PipelineLatencyP95High
+#         expr: |
+#           histogram_quantile(0.95,
+#             sum by (le) (rate(feedbackiq_pipeline_stage_duration_seconds_bucket{stage="analyze"}[10m]))
+#           ) > 60
+#         for: 15m
+#       - alert: IntegrationFailing
+#         expr: sum by (provider) (rate(feedbackiq_integration_calls_total{outcome!="success"}[10m])) > 0
+#         for: 15m
