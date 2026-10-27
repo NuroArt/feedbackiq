@@ -6,7 +6,7 @@ name: eval
 # the PR touched a prompt, the model, or the schema.
 on:
   schedule:
-    - cron: "0 7 * * *"          # 07:00 UTC nightly
+    # - cron: "0 7 * * *"  # enable once ANTHROPIC_API_KEY exists in the eval environment
   workflow_dispatch:
     inputs:
       repeats:
