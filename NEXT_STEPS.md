@@ -21,7 +21,9 @@ Demo repo: `NuroArt/feedbackiq-demo` (issues #18–#21 are the good ones).
    the overview, with a screenshots section wired to `docs/images/`.
 3. ~~`.env` over shell exports~~ — documented in the Quickstart.
 
-Remaining from that list: **drop the three screenshots into `docs/images/`**
+All three are done. The screenshots were dropped in favour of linking the live
+demo repository, which is better evidence than an image -- it is clickable and
+the comment history is visible in full.
 (filenames in `docs/images/README.md`), then commit and push them.
 
 ```bash

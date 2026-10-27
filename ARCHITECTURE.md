@@ -456,3 +456,23 @@ because nothing prompts anyone to look. Four separate instances across one
 project, in code written at four different times, which is a reasonable
 argument that the pattern is worth checking for deliberately rather than
 hoping to notice.
+
+### Appendix: an eleventh, from CI itself
+
+The image pushed to the registry fine, then the scan of that same image failed
+with `Path does not exist: trivy.sarif` -- the scanner had exited without
+producing anything.
+
+`IMAGE_NAME` is `${{ github.repository }}`, which here is `NuroArt/feedbackiq`
+-- with capitals. OCI registries require lowercase repository names.
+`docker/metadata-action` normalises for the push, so the upload succeeded; the
+hand-written references in the scan and smoke-test steps did not, and pulled a
+name that cannot exist.
+
+Same family as the dropped labels: a provider quietly normalises something, the
+code around it does not, and the mismatch surfaces somewhere that looks
+unrelated to the cause. It only appears when the repository owner has capital
+letters, which is why it survives most projects unnoticed.
+
+The fix computes the lowercase reference once and uses it everywhere the image
+is named by hand.
