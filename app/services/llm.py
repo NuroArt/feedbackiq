@@ -348,9 +348,15 @@ class LLMAnalyzer:
                         },
                     )
 
-                payload = next(
-                    (b.input for b in msg.content if getattr(b, "type", "") == "tool_use"),
+                # getattr rather than attribute access: msg.content is a union
+                # of a dozen block types and only ToolUseBlock has `.input`, so
+                # a direct read fails type checking even behind a type guard.
+                block = next(
+                    (b for b in msg.content if getattr(b, "type", "") == "tool_use"),
                     None,
+                )
+                payload: dict[str, Any] | None = (
+                    getattr(block, "input", None) if block is not None else None
                 )
                 if payload is None:
                     LLM_CALLS.labels(model, "no_tool_use").inc()

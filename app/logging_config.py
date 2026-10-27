@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import TYPE_CHECKING
 
 import structlog
+from structlog.typing import Processor
 
 from app.config import Settings
 
