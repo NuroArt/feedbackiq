@@ -5,8 +5,9 @@ name: eval
 # a PR only when someone applies the `run-eval` label — which is the signal that
 # the PR touched a prompt, the model, or the schema.
 on:
-  schedule:
-    # - cron: "0 7 * * *"  # enable once ANTHROPIC_API_KEY exists in the eval environment
+  # No nightly schedule: the eval needs an API key this public repo has not
+  # got, and a job that fails every morning trains people to ignore red builds.
+  # Re-enable with a schedule: block containing - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       repeats:
