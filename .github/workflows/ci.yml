@@ -98,6 +98,7 @@ jobs:
           format: sarif
           output: trivy.sarif
           severity: HIGH,CRITICAL
+          scanners: vuln
           exit-code: "0"   # report first; flip to "1" to gate once the base is clean
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
