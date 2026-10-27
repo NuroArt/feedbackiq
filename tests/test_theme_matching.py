@@ -93,8 +93,7 @@ def test_threshold_sits_in_the_gap_between_the_two_populations():
     matches = [similarity(a, b) for a, b in OBSERVED_REWORDINGS]
     non = [similarity(a, b) for a, b in MUST_NOT_MATCH]
     assert min(matches) > max(non), (
-        f"populations overlap: worst match {min(matches):.2f} "
-        f"vs best non-match {max(non):.2f}"
+        f"populations overlap: worst match {min(matches):.2f} vs best non-match {max(non):.2f}"
     )
     assert max(non) < MATCH_THRESHOLD <= min(matches)
 
@@ -125,9 +124,16 @@ def test_best_match_picks_the_highest_scoring_candidate():
 # Issue body round-trip
 # ---------------------------------------------------------------------------
 def _theme(name="Export fails with server error", category=Category.BUG, sev=4):
-    return Theme(name=name, category=category, item_count=2, max_severity=sev,
-                 avg_severity=4.0, negative_share=1.0, example_quotes=["q"],
-                 item_ids=["a", "b"])
+    return Theme(
+        name=name,
+        category=category,
+        item_count=2,
+        max_severity=sev,
+        avg_severity=4.0,
+        negative_share=1.0,
+        example_quotes=["q"],
+        item_ids=["a", "b"],
+    )
 
 
 def test_issue_body_carries_the_theme_and_category_for_later_matching():
@@ -177,9 +183,9 @@ async def test_reworded_theme_comments_instead_of_duplicating():
     respx.get("https://api.github.com/repos/acme/app/issues").mock(
         return_value=httpx.Response(200, json=[_issue(1, "Export fails with server error")])
     )
-    comment = respx.post(
-        "https://api.github.com/repos/acme/app/issues/1/comments"
-    ).mock(return_value=httpx.Response(201, json={}))
+    comment = respx.post("https://api.github.com/repos/acme/app/issues/1/comments").mock(
+        return_value=httpx.Response(201, json={})
+    )
     create = respx.post("https://api.github.com/repos/acme/app/issues")
 
     async with GitHubClient(_settings()) as gh:
@@ -198,8 +204,9 @@ async def test_genuinely_new_theme_still_files_an_issue():
         return_value=httpx.Response(200, json=[_issue(1, "Export fails with server error")])
     )
     create = respx.post("https://api.github.com/repos/acme/app/issues").mock(
-        return_value=httpx.Response(201, json={
-            "number": 2, "html_url": "https://github.com/acme/app/issues/2"})
+        return_value=httpx.Response(
+            201, json={"number": 2, "html_url": "https://github.com/acme/app/issues/2"}
+        )
     )
 
     async with GitHubClient(_settings()) as gh:
@@ -217,19 +224,22 @@ async def test_two_similar_themes_in_one_run_do_not_both_file():
         return_value=httpx.Response(200, json=[])
     )
     create = respx.post("https://api.github.com/repos/acme/app/issues").mock(
-        return_value=httpx.Response(201, json={
-            "number": 9, "html_url": "https://github.com/acme/app/issues/9"})
+        return_value=httpx.Response(
+            201, json={"number": 9, "html_url": "https://github.com/acme/app/issues/9"}
+        )
     )
-    comment = respx.post(
-        "https://api.github.com/repos/acme/app/issues/9/comments"
-    ).mock(return_value=httpx.Response(201, json={}))
+    comment = respx.post("https://api.github.com/repos/acme/app/issues/9/comments").mock(
+        return_value=httpx.Response(201, json={})
+    )
 
     async with GitHubClient(_settings()) as gh:
         shared: list[tuple[str, str, str]] = await gh.list_candidates()
-        first = await gh.upsert_theme_issue(_theme("Export fails with server error"),
-                                            "run_1", shared)
-        second = await gh.upsert_theme_issue(_theme("Report export fails with error"),
-                                             "run_1", shared)
+        first = await gh.upsert_theme_issue(
+            _theme("Export fails with server error"), "run_1", shared
+        )
+        second = await gh.upsert_theme_issue(
+            _theme("Report export fails with error"), "run_1", shared
+        )
 
     assert first.action == "create_issue"
     assert second.action == "comment_on_issue"
@@ -240,11 +250,17 @@ async def test_two_similar_themes_in_one_run_do_not_both_file():
 async def test_pull_requests_are_ignored_in_the_listing():
     """GET /issues returns PRs too; a PR is not a feedback theme."""
     respx.get("https://api.github.com/repos/acme/app/issues").mock(
-        return_value=httpx.Response(200, json=[
-            _issue(1, "Export fails with server error"),
-            {"number": 2, "pull_request": {"url": "x"},
-             "body": f"<!-- {CATEGORY_PREFIX}bug -->\n<!-- {THEME_PREFIX}a pr -->"},
-        ])
+        return_value=httpx.Response(
+            200,
+            json=[
+                _issue(1, "Export fails with server error"),
+                {
+                    "number": 2,
+                    "pull_request": {"url": "x"},
+                    "body": f"<!-- {CATEGORY_PREFIX}bug -->\n<!-- {THEME_PREFIX}a pr -->",
+                },
+            ],
+        )
     )
     async with GitHubClient(_settings()) as gh:
         assert len(await gh.list_candidates()) == 1
@@ -258,8 +274,11 @@ async def test_secondary_rate_limit_is_retried():
     """GitHub signals a write burst limit with 403 + a rate-limit message."""
     route = respx.get("https://api.github.com/repos/acme/app/issues").mock(
         side_effect=[
-            httpx.Response(403, headers={"retry-after": "0"},
-                           json={"message": "You have exceeded a secondary rate limit"}),
+            httpx.Response(
+                403,
+                headers={"retry-after": "0"},
+                json={"message": "You have exceeded a secondary rate limit"},
+            ),
             httpx.Response(200, json=[]),
         ]
     )
@@ -308,10 +327,13 @@ def _unlabelled_issue(number: int, name: str, category: str = "bug") -> dict:
 async def test_dedup_works_when_github_drops_every_label():
     """The regression. Identity lives in the body, not in metadata."""
     respx.get("https://api.github.com/repos/acme/app/issues").mock(
-        return_value=httpx.Response(200, json=[
-            _unlabelled_issue(1, "Export fails with server error"),
-            _unlabelled_issue(2, "Slow dashboard and chart loading", "performance"),
-        ])
+        return_value=httpx.Response(
+            200,
+            json=[
+                _unlabelled_issue(1, "Export fails with server error"),
+                _unlabelled_issue(2, "Slow dashboard and chart loading", "performance"),
+            ],
+        )
     )
     async with GitHubClient(_settings()) as gh:
         candidates = await gh.list_candidates()
@@ -338,13 +360,13 @@ async def test_listing_does_not_filter_by_label():
 async def test_identical_theme_name_matches_an_unlabelled_issue():
     """Run 2 filed exact-name duplicates because candidates came back empty."""
     respx.get("https://api.github.com/repos/acme/app/issues").mock(
-        return_value=httpx.Response(200, json=[
-            _unlabelled_issue(1, "Slow dashboard and chart loading", "performance")
-        ])
+        return_value=httpx.Response(
+            200, json=[_unlabelled_issue(1, "Slow dashboard and chart loading", "performance")]
+        )
     )
-    comment = respx.post(
-        "https://api.github.com/repos/acme/app/issues/1/comments"
-    ).mock(return_value=httpx.Response(201, json={}))
+    comment = respx.post("https://api.github.com/repos/acme/app/issues/1/comments").mock(
+        return_value=httpx.Response(201, json={})
+    )
     create = respx.post("https://api.github.com/repos/acme/app/issues")
 
     async with GitHubClient(_settings()) as gh:
@@ -360,9 +382,9 @@ async def test_identical_theme_name_matches_an_unlabelled_issue():
 async def test_failed_comment_does_not_look_like_broken_dedup():
     """Matching succeeded and no duplicate was filed; say exactly that."""
     respx.get("https://api.github.com/repos/acme/app/issues").mock(
-        return_value=httpx.Response(200, json=[
-            _unlabelled_issue(1, "Export fails with server error")
-        ])
+        return_value=httpx.Response(
+            200, json=[_unlabelled_issue(1, "Export fails with server error")]
+        )
     )
     respx.post("https://api.github.com/repos/acme/app/issues/1/comments").mock(
         return_value=httpx.Response(403, json={"message": "Resource not accessible"})
@@ -370,9 +392,7 @@ async def test_failed_comment_does_not_look_like_broken_dedup():
     create = respx.post("https://api.github.com/repos/acme/app/issues")
 
     async with GitHubClient(_settings()) as gh:
-        action = await gh.upsert_theme_issue(
-            _theme("Report export fails with error"), "run_2"
-        )
+        action = await gh.upsert_theme_issue(_theme("Report export fails with error"), "run_2")
 
     assert not create.called, "a failed comment must never fall back to creating"
     assert action.action == "comment_on_issue"

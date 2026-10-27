@@ -22,7 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from pydantic import ValidationError
@@ -37,6 +37,9 @@ from app.config import Settings
 from app.errors import LLMError, LLMPermanentError
 from app.models import Category, FeedbackItem, ItemAnalysis, Sentiment
 from app.observability import LLM_CALLS, LLM_LATENCY, LLM_TOKENS
+
+if TYPE_CHECKING:
+    from anthropic.types import ToolChoiceParam, ToolParam
 
 log = structlog.get_logger(__name__)
 
@@ -123,9 +126,7 @@ def _render_batch(items: list[FeedbackItem], product_context: str) -> str:
                 ensure_ascii=False,
             )
         )
-    lines.append(
-        "\nCall record_analysis once with one entry for each id above."
-    )
+    lines.append("\nCall record_analysis once with one entry for each id above.")
     return "\n".join(lines)
 
 
@@ -155,7 +156,7 @@ class LLMAnalyzer:
             timeout=settings.llm_timeout_seconds,
             max_retries=0,  # we own retry policy, so it's observable
         )
-        self.tool = {
+        self.tool: ToolParam = {
             "name": "record_analysis",
             "description": "Record the structured analysis of each feedback item.",
             "input_schema": _tool_schema(),
@@ -171,11 +172,9 @@ class LLMAnalyzer:
         self._forced = settings.llm_tool_choice == "forced"
 
     @property
-    def tool_choice(self) -> dict[str, str]:
+    def tool_choice(self) -> ToolChoiceParam:
         return (
-            {"type": "tool", "name": "record_analysis"}
-            if self._forced
-            else {"type": "auto"}
+            {"type": "tool", "name": "record_analysis"} if self._forced else {"type": "auto"}
         )
 
     def _downgrade_tool_choice(self, message: str) -> bool:
@@ -222,9 +221,7 @@ class LLMAnalyzer:
             async with sem:
                 return await self._analyze_batch(batch, product_context)
 
-        results = await asyncio.gather(
-            *(run(b) for b in batches), return_exceptions=True
-        )
+        results = await asyncio.gather(*(run(b) for b in batches), return_exceptions=True)
 
         analyses: list[ItemAnalysis] = []
         failed: list[str] = []
@@ -249,7 +246,8 @@ class LLMAnalyzer:
             # operator to the logs to find out it was simply a bad API key.
             cause = f"{type(first_error).__name__}: {first_error}" if first_error else None
             raise LLMError(
-                f"All analysis batches failed ({cause})." if cause
+                f"All analysis batches failed ({cause})."
+                if cause
                 else "All analysis batches failed.",
                 detail={"failed_ids": failed[:20], "cause": cause},
             )
@@ -307,21 +305,16 @@ class LLMAnalyzer:
 
                         # An unsupported tool_choice is a capability mismatch,
                         # not a bad request: retry once in the supported mode.
-                        if exc.status_code == 400 and self._downgrade_tool_choice(
-                            api_message
-                        ):
+                        if exc.status_code == 400 and self._downgrade_tool_choice(api_message):
                             LLM_CALLS.labels(model, "tool_choice_downgraded").inc()
-                            raise LLMError(
-                                "Retrying with tool_choice=auto."
-                            ) from exc
+                            raise LLMError("Retrying with tool_choice=auto.") from exc
 
                         # Any other 4xx except 429 returns the same answer on
                         # every attempt. Carry the API's own message up: the
                         # status code alone sends an operator to the logs.
                         if 400 <= exc.status_code < 500 and exc.status_code != 429:
                             raise LLMPermanentError(
-                                f"LLM rejected the request "
-                                f"({exc.status_code}): {api_message}",
+                                f"LLM rejected the request ({exc.status_code}): {api_message}",
                                 detail={
                                     "status": exc.status_code,
                                     "api_message": api_message,
@@ -367,14 +360,12 @@ class LLMAnalyzer:
                     # the prompt asks for one entry per input id.
                     LLM_CALLS.labels(model, "empty_payload").inc()
                     raise LLMError(
-                        f"Model returned a tool call with no analyses for "
-                        f"{len(batch)} items."
+                        f"Model returned a tool call with no analyses for {len(batch)} items."
                     )
 
                 try:
                     analyses = [
-                        ItemAnalysis.model_validate(a)
-                        for a in payload.get("analyses", [])
+                        ItemAnalysis.model_validate(a) for a in payload.get("analyses", [])
                     ]
                 except ValidationError as exc:
                     LLM_CALLS.labels(model, "schema_invalid").inc()
@@ -408,20 +399,43 @@ _NEG = re.compile(
 )
 _POS = re.compile(r"\b(love|great|awesome|excellent|perfect|fast|easy|thank)\b", re.I)
 _RULES: list[tuple[re.Pattern[str], Category, str]] = [
-    (re.compile(r"\b(crash|error|bug|broken|500|exception)\b", re.I), Category.BUG,
-     "Crashes and errors in core flows"),
-    (re.compile(r"\b(slow|lag|timeout|perform|freeze|hang)\b", re.I),
-     Category.PERFORMANCE, "Slow load and timeout issues"),
-    (re.compile(r"\b(price|pricing|cost|expensive|billing|invoice)\b", re.I),
-     Category.PRICING, "Pricing and billing concerns"),
-    (re.compile(r"\b(doc|documentation|guide|tutorial|readme)\b", re.I),
-     Category.DOCS, "Documentation gaps"),
-    (re.compile(r"\b(support|ticket|response|agent|reply)\b", re.I),
-     Category.SUPPORT, "Support responsiveness"),
-    (re.compile(r"\b(wish|please add|feature|would be nice|support for|integration)\b",
-                re.I), Category.FEATURE_REQUEST, "Requested integrations and features"),
-    (re.compile(r"\b(confus|unclear|hard to find|navigat|ux|ui|layout)\b", re.I),
-     Category.USABILITY, "Confusing navigation and UI"),
+    (
+        re.compile(r"\b(crash|error|bug|broken|500|exception)\b", re.I),
+        Category.BUG,
+        "Crashes and errors in core flows",
+    ),
+    (
+        re.compile(r"\b(slow|lag|timeout|perform|freeze|hang)\b", re.I),
+        Category.PERFORMANCE,
+        "Slow load and timeout issues",
+    ),
+    (
+        re.compile(r"\b(price|pricing|cost|expensive|billing|invoice)\b", re.I),
+        Category.PRICING,
+        "Pricing and billing concerns",
+    ),
+    (
+        re.compile(r"\b(doc|documentation|guide|tutorial|readme)\b", re.I),
+        Category.DOCS,
+        "Documentation gaps",
+    ),
+    (
+        re.compile(r"\b(support|ticket|response|agent|reply)\b", re.I),
+        Category.SUPPORT,
+        "Support responsiveness",
+    ),
+    (
+        re.compile(
+            r"\b(wish|please add|feature|would be nice|support for|integration)\b", re.I
+        ),
+        Category.FEATURE_REQUEST,
+        "Requested integrations and features",
+    ),
+    (
+        re.compile(r"\b(confus|unclear|hard to find|navigat|ux|ui|layout)\b", re.I),
+        Category.USABILITY,
+        "Confusing navigation and UI",
+    ),
 ]
 
 

@@ -64,9 +64,11 @@ def check_config(settings: Settings) -> bool:
     key = settings.anthropic_api_key
     print(f"  {OK}  key present ({key[:7]}...{key[-4:]})")
     print(f"  {OK}  model: {settings.llm_model}")
-    print(f"  {OK}  batch size {settings.llm_batch_size}, "
-          f"{settings.llm_max_attempts} attempts, "
-          f"{settings.llm_timeout_seconds:.0f}s timeout")
+    print(
+        f"  {OK}  batch size {settings.llm_batch_size}, "
+        f"{settings.llm_max_attempts} attempts, "
+        f"{settings.llm_timeout_seconds:.0f}s timeout"
+    )
     return True
 
 
@@ -113,16 +115,22 @@ async def check_api(settings: Settings) -> bool:
         if "401" in text or "403" in text:
             hint = "Bad or missing API key. Check ANTHROPIC_API_KEY."
         elif "model" in text.lower() and "not" in text.lower():
-            hint = ("The model name is not available to this account. "
-                    "Set LLM_MODEL to an identifier from your console.")
+            hint = (
+                "The model name is not available to this account. "
+                "Set LLM_MODEL to an identifier from your console."
+            )
         elif "tool_choice" in text:
-            hint = ("This model does not support forced tool choice. The client "
-                    "negotiates down automatically; seeing this means the "
-                    "downgrade path failed. Try LLM_TOOL_CHOICE=auto.")
+            hint = (
+                "This model does not support forced tool choice. The client "
+                "negotiates down automatically; seeing this means the "
+                "downgrade path failed. Try LLM_TOOL_CHOICE=auto."
+            )
         elif "400" in text:
-            hint = ("The request was rejected. If it names input_schema, print it: "
-                    "python -c 'from app.services.llm import _tool_schema; import json;"
-                    " print(json.dumps(_tool_schema(), indent=2))'")
+            hint = (
+                "The request was rejected. If it names input_schema, print it: "
+                "python -c 'from app.services.llm import _tool_schema; import json;"
+                " print(json.dumps(_tool_schema(), indent=2))'"
+            )
         else:
             hint = "Check connectivity and the message above."
         print(f"\n  {DIM}{hint}{RESET}")
@@ -159,17 +167,23 @@ async def check_clustering(settings: Settings) -> bool:
         print(f"  {DIM}      {a.id}  sev{a.severity}  {a.theme!r}{RESET}")
 
     distinct = len(counts)
-    print(f"\n  {DIM}      {distinct} distinct themes for 6 items "
-          f"({result.input_tokens + result.output_tokens} tokens){RESET}")
+    print(
+        f"\n  {DIM}      {distinct} distinct themes for 6 items "
+        f"({result.input_tokens + result.output_tokens} tokens){RESET}"
+    )
 
     if distinct == 2:
         print(f"  {OK}  perfect clustering -- string-keyed aggregation will work as designed")
         return True
     if distinct <= 3:
-        print(f"  {WARN}  close but not exact. Aggregation will mostly work; "
-              f"expect some split themes.")
-        print(f"  {DIM}      Strengthen the theme-reuse rule in SYSTEM_PROMPT, "
-              f"then re-run.{RESET}")
+        print(
+            f"  {WARN}  close but not exact. Aggregation will mostly work; "
+            f"expect some split themes."
+        )
+        print(
+            f"  {DIM}      Strengthen the theme-reuse rule in SYSTEM_PROMPT, "
+            f"then re-run.{RESET}"
+        )
         return True
     if distinct >= 5:
         print(f"  {FAIL}  the model is not reusing theme wording.")
@@ -184,14 +198,20 @@ async def check_clustering(settings: Settings) -> bool:
 
 def next_steps() -> None:
     header(5, "Next")
-    print(f"  {DIM}1.{RESET} make eval                  "
-          f"{DIM}# score the 50-item golden set, 3 repeats{RESET}")
-    print(f"  {DIM}2.{RESET} tune thresholds to measured-minus-margin"
-          f" in evals/thresholds.json")
-    print(f"  {DIM}3.{RESET} make eval-baseline         "
-          f"{DIM}# commit the live baseline{RESET}")
-    print(f"  {DIM}4.{RESET} set GITHUB_TOKEN / GITHUB_REPO / SLACK_WEBHOOK_URL, "
-          f"then POST samples/request.json with dry_run=false")
+    print(
+        f"  {DIM}1.{RESET} make eval                  "
+        f"{DIM}# score the 50-item golden set, 3 repeats{RESET}"
+    )
+    print(
+        f"  {DIM}2.{RESET} tune thresholds to measured-minus-margin in evals/thresholds.json"
+    )
+    print(
+        f"  {DIM}3.{RESET} make eval-baseline         {DIM}# commit the live baseline{RESET}"
+    )
+    print(
+        f"  {DIM}4.{RESET} set GITHUB_TOKEN / GITHUB_REPO / SLACK_WEBHOOK_URL, "
+        f"then POST samples/request.json with dry_run=false"
+    )
 
 
 async def main() -> int:

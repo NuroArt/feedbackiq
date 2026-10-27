@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -32,7 +33,7 @@ def configure_logging(settings: Settings) -> None:
         logging.getLogger(noisy).propagate = True
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-    shared = [
+    shared: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,

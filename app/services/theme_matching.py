@@ -39,11 +39,40 @@ import re
 # Words that carry no discriminating signal in a feedback theme. "Error",
 # "fails" and "issue" are deliberately NOT here: they distinguish a bug theme
 # from a feature request.
-_STOPWORDS = frozenset({
-    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from",
-    "has", "have", "in", "into", "is", "it", "its", "of", "on", "or", "that",
-    "the", "their", "there", "this", "to", "when", "with", "without",
-})
+_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "in",
+        "into",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "their",
+        "there",
+        "this",
+        "to",
+        "when",
+        "with",
+        "without",
+    }
+)
 
 _WORD = re.compile(r"[a-z0-9]+")
 

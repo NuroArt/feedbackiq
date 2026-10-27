@@ -103,9 +103,7 @@ class SlackClient:
             "blocks": build_blocks(run_id, summary, themes, metrics, issue_links),
         }
         try:
-            resp = await self._client.post(
-                str(self.settings.slack_webhook_url), json=payload
-            )
+            resp = await self._client.post(str(self.settings.slack_webhook_url), json=payload)
         except httpx.HTTPError as exc:
             INTEGRATION_CALLS.labels("slack", "network_error").inc()
             raise IntegrationError("slack", f"Slack request failed: {exc}") from exc

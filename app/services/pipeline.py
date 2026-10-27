@@ -47,9 +47,7 @@ from app.services.slack_client import SlackClient
 log = structlog.get_logger(__name__)
 
 
-def aggregate_themes(
-    items: list[FeedbackItem], analyses: list[ItemAnalysis]
-) -> list[Theme]:
+def aggregate_themes(items: list[FeedbackItem], analyses: list[ItemAnalysis]) -> list[Theme]:
     """Cluster per-item analyses into themes, ranked by priority score."""
     by_id = {i.id: i for i in items}
     buckets: dict[str, list[ItemAnalysis]] = defaultdict(list)
@@ -61,15 +59,11 @@ def aggregate_themes(
         severities = [a.severity for a in group]
         negatives = sum(1 for a in group if a.sentiment is Sentiment.NEGATIVE)
         enterprise = sum(
-            1
-            for a in group
-            if (src := by_id.get(a.id)) and src.customer_tier == "enterprise"
+            1 for a in group if (src := by_id.get(a.id)) and src.customer_tier == "enterprise"
         )
         # Quote the highest-severity items -- those carry the most signal.
         ranked = sorted(group, key=lambda a: a.severity, reverse=True)
-        quotes = [
-            (by_id[a.id].text[:200] if a.id in by_id else a.summary) for a in ranked[:3]
-        ]
+        quotes = [(by_id[a.id].text[:200] if a.id in by_id else a.summary) for a in ranked[:3]]
         themes.append(
             Theme(
                 name=group[0].theme.strip(),
@@ -132,9 +126,7 @@ class FeedbackPipeline:
             # --- 1. analyze -------------------------------------------------
             t0 = time.perf_counter()
             with stage_timer("analyze", items=len(request.items)) as extra:
-                result = await self.analyzer.analyze(
-                    request.items, request.product_context
-                )
+                result = await self.analyzer.analyze(request.items, request.product_context)
                 extra["analyzed"] = len(result.analyses)
                 extra["failed"] = len(result.failed_ids)
             stages.append(
@@ -147,9 +139,7 @@ class FeedbackPipeline:
                 themes = aggregate_themes(request.items, result.analyses)
                 extra["themes"] = len(themes)
             stages.append(
-                StageTiming(
-                    stage="aggregate", duration_ms=(time.perf_counter() - t0) * 1000
-                )
+                StageTiming(stage="aggregate", duration_ms=(time.perf_counter() - t0) * 1000)
             )
 
             metrics = RunMetrics(
@@ -228,20 +218,40 @@ class FeedbackPipeline:
         candidates = [t for t in themes if t.max_severity >= threshold][:5]
 
         if not request.create_issues:
-            return [ActionRecord(provider="github", action="create_issue",
-                                 status="skipped", detail="Disabled on the request.")]
+            return [
+                ActionRecord(
+                    provider="github",
+                    action="create_issue",
+                    status="skipped",
+                    detail="Disabled on the request.",
+                )
+            ]
         if not self.settings.github_enabled:
-            return [ActionRecord(provider="github", action="create_issue",
-                                 status="skipped",
-                                 detail="GITHUB_TOKEN / GITHUB_REPO not configured.")]
+            return [
+                ActionRecord(
+                    provider="github",
+                    action="create_issue",
+                    status="skipped",
+                    detail="GITHUB_TOKEN / GITHUB_REPO not configured.",
+                )
+            ]
         if not candidates:
-            return [ActionRecord(provider="github", action="create_issue",
-                                 status="skipped",
-                                 detail=f"No theme reached severity {threshold}.")]
+            return [
+                ActionRecord(
+                    provider="github",
+                    action="create_issue",
+                    status="skipped",
+                    detail=f"No theme reached severity {threshold}.",
+                )
+            ]
         if dry_run:
             return [
-                ActionRecord(provider="github", action="create_issue", status="dry_run",
-                             detail=f"Would file: {t.name} (severity {t.max_severity}).")
+                ActionRecord(
+                    provider="github",
+                    action="create_issue",
+                    status="dry_run",
+                    detail=f"Would file: {t.name} (severity {t.max_severity}).",
+                )
                 for t in candidates
             ]
 
@@ -254,20 +264,28 @@ class FeedbackPipeline:
                 existing = await gh.list_candidates()
             except IntegrationError as exc:
                 log.error("github_candidates_failed", error=exc.message)
-                return [ActionRecord(provider="github", action="create_issue",
-                                     status="failed", detail=exc.message)]
+                return [
+                    ActionRecord(
+                        provider="github",
+                        action="create_issue",
+                        status="failed",
+                        detail=exc.message,
+                    )
+                ]
 
             for theme in candidates:
                 try:
-                    actions.append(
-                        await gh.upsert_theme_issue(theme, run_id, existing)
-                    )
+                    actions.append(await gh.upsert_theme_issue(theme, run_id, existing))
                 except IntegrationError as exc:
                     # Non-fatal: record and continue with the next theme.
                     log.error("github_action_failed", theme=theme.name, error=exc.message)
                     actions.append(
-                        ActionRecord(provider="github", action="create_issue",
-                                     status="failed", detail=exc.message)
+                        ActionRecord(
+                            provider="github",
+                            action="create_issue",
+                            status="failed",
+                            detail=exc.message,
+                        )
                     )
         return actions
 
@@ -282,19 +300,31 @@ class FeedbackPipeline:
         dry_run: bool,
     ) -> ActionRecord:
         if not request.notify_slack:
-            return ActionRecord(provider="slack", action="post_digest",
-                                status="skipped", detail="Disabled on the request.")
+            return ActionRecord(
+                provider="slack",
+                action="post_digest",
+                status="skipped",
+                detail="Disabled on the request.",
+            )
         if not self.settings.slack_enabled:
-            return ActionRecord(provider="slack", action="post_digest",
-                                status="skipped",
-                                detail="SLACK_WEBHOOK_URL not configured.")
+            return ActionRecord(
+                provider="slack",
+                action="post_digest",
+                status="skipped",
+                detail="SLACK_WEBHOOK_URL not configured.",
+            )
         if dry_run:
-            return ActionRecord(provider="slack", action="post_digest", status="dry_run",
-                                detail=f"Would post digest with {len(themes)} themes.")
+            return ActionRecord(
+                provider="slack",
+                action="post_digest",
+                status="dry_run",
+                detail=f"Would post digest with {len(themes)} themes.",
+            )
         try:
             async with SlackClient(self.settings) as slack:
                 return await slack.post_digest(run_id, summary, themes, metrics, links)
         except IntegrationError as exc:
             log.error("slack_action_failed", error=exc.message)
-            return ActionRecord(provider="slack", action="post_digest",
-                                status="failed", detail=exc.message)
+            return ActionRecord(
+                provider="slack", action="post_digest", status="failed", detail=exc.message
+            )

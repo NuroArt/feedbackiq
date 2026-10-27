@@ -45,7 +45,10 @@ def test_analyze_returns_full_contract(client):
     assert body["themes"], "expected at least one theme"
     assert body["metrics"]["items_analyzed"] == 2
     assert {s["stage"] for s in body["metrics"]["stages"]} == {
-        "analyze", "aggregate", "route_github", "notify_slack"
+        "analyze",
+        "aggregate",
+        "route_github",
+        "notify_slack",
     }
 
 
@@ -79,9 +82,7 @@ def test_api_key_is_enforced_when_configured():
     with TestClient(app) as c:
         payload = {"items": [{"id": "a", "text": "it broke"}], "dry_run": True}
         assert c.post("/v1/feedback/analyze", json=payload).status_code == 401
-        ok = c.post(
-            "/v1/feedback/analyze", json=payload, headers={"X-API-Key": "s3cret"}
-        )
+        ok = c.post("/v1/feedback/analyze", json=payload, headers={"X-API-Key": "s3cret"})
         assert ok.status_code == 200
     app.dependency_overrides.clear()
 

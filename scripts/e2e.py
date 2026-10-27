@@ -61,31 +61,38 @@ def show_config(settings: Settings, live: bool) -> bool:
 
 def report(label: str, response) -> None:
     print(f"\n{DIM}--- {label} ---{RESET}")
-    print(f"  run_id {response.run_id}  ·  {response.metrics.items_analyzed} items  "
-          f"·  {response.metrics.themes} themes  "
-          f"·  {response.metrics.total_duration_ms:.0f}ms")
+    print(
+        f"  run_id {response.run_id}  ·  {response.metrics.items_analyzed} items  "
+        f"·  {response.metrics.themes} themes  "
+        f"·  {response.metrics.total_duration_ms:.0f}ms"
+    )
     print(f"\n  {response.executive_summary}\n")
 
     for theme in response.themes[:5]:
         flag = "→ issue" if theme.max_severity >= 3 else ""
-        print(f"  {DIM}{theme.priority_score:>6}  sev{theme.max_severity}  "
-              f"x{theme.item_count}  {theme.name}  {flag}{RESET}")
+        print(
+            f"  {DIM}{theme.priority_score:>6}  sev{theme.max_severity}  "
+            f"x{theme.item_count}  {theme.name}  {flag}{RESET}"
+        )
 
     print()
     for a in response.actions:
         mark = {"created": GREEN, "failed": RED, "dry_run": YELLOW}.get(a.status, DIM)
-        print(f"  {mark}{a.status:<8}{RESET} {a.provider:<7} {a.action:<18} "
-              f"{a.detail or ''}")
+        print(f"  {mark}{a.status:<8}{RESET} {a.provider:<7} {a.action:<18} {a.detail or ''}")
         if a.target:
             print(f"           {DIM}{a.target}{RESET}")
 
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--live", action="store_true",
-                        help="Actually write to GitHub and Slack.")
-    parser.add_argument("--twice", action="store_true",
-                        help="Run twice and verify the second run does not duplicate.")
+    parser.add_argument(
+        "--live", action="store_true", help="Actually write to GitHub and Slack."
+    )
+    parser.add_argument(
+        "--twice",
+        action="store_true",
+        help="Run twice and verify the second run does not duplicate.",
+    )
     args = parser.parse_args()
 
     settings = Settings()
@@ -109,11 +116,14 @@ async def main() -> int:
     degraded = [a for a in failures if a.action == "comment_on_issue"]
 
     if degraded:
-        print(f"\n  {WARN}  {len(degraded)} comment(s) could not be posted. "
-              f"Dedup still worked -- no duplicates were filed.")
+        print(
+            f"\n  {WARN}  {len(degraded)} comment(s) could not be posted. "
+            f"Dedup still worked -- no duplicates were filed."
+        )
         print(f"  {DIM}      {degraded[0].detail[:160]}")
-        print(f"        Add 'Contents: Read and write' to the token to grant "
-              f"push access.{RESET}")
+        print(
+            f"        Add 'Contents: Read and write' to the token to grant push access.{RESET}"
+        )
 
     if fatal:
         print(f"\n  {FAIL}  {len(fatal)} action(s) failed:")
@@ -138,7 +148,8 @@ async def main() -> int:
     issue_urls = {
         a.target
         for a in first.actions
-        if a.provider == "github" and a.target
+        if a.provider == "github"
+        and a.target
         and a.action in ("create_issue", "comment_on_issue")
     }
     print(f"\n{DIM}Pausing {SEARCH_INDEX_DELAY}s, then running again.")
@@ -151,13 +162,12 @@ async def main() -> int:
 
     # The verdict: run 2 must comment, not create.
     new_issues = [
-        a for a in second.actions
-        if a.provider == "github" and a.status == "created"
-        and a.action == "create_issue"
+        a
+        for a in second.actions
+        if a.provider == "github" and a.status == "created" and a.action == "create_issue"
     ]
     comments = [
-        a for a in second.actions
-        if a.provider == "github" and a.action == "comment_on_issue"
+        a for a in second.actions if a.provider == "github" and a.action == "comment_on_issue"
     ]
     matched = [a for a in comments if "Matched existing issue" in (a.detail or "")]
 
@@ -176,11 +186,15 @@ async def main() -> int:
         print(f"        two runs above.{RESET}")
         return 1
 
-    print(f"  {OK}  idempotency holds: run 2 matched {len(matched)} existing "
-          f"issue(s) and filed nothing new.")
+    print(
+        f"  {OK}  idempotency holds: run 2 matched {len(matched)} existing "
+        f"issue(s) and filed nothing new."
+    )
     if len(matched) > len([c for c in comments if c.status == "created"]):
-        print(f"  {DIM}      (some comments could not be posted; the match is what "
-              f"prevents duplicates){RESET}")
+        print(
+            f"  {DIM}      (some comments could not be posted; the match is what "
+            f"prevents duplicates){RESET}"
+        )
     print(f"\n  {DIM}Check the repo: each issue should have one comment from run 2,")
     print(f"  and the issue count should be unchanged.{RESET}\n")
     return 0

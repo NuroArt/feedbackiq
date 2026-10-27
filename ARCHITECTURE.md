@@ -20,7 +20,7 @@ FeedbackIQ splits the job along exactly that line.
 **Everything downstream is ordinary code.** Clustering is a dictionary keyed on the normalised `theme` string. Ranking is arithmetic:
 
 ```python
-priority = item_count + 2*max_severity + 1.5*enterprise_count + 3*negative_share
+priority = item_count + 2 * max_severity + 1.5 * enterprise_count + 3 * negative_share
 ```
 
 **Why this split matters:**

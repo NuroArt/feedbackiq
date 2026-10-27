@@ -21,8 +21,10 @@ def test_build_analyzer_falls_back_to_stub_without_a_key(settings):
 
 
 async def test_stub_returns_one_analysis_per_item(settings):
-    items = [FeedbackItem(id=str(i), text=t) for i, t in enumerate(
-        ["crash on save", "so slow", "love it", "please add webhooks"])]
+    items = [
+        FeedbackItem(id=str(i), text=t)
+        for i, t in enumerate(["crash on save", "so slow", "love it", "please add webhooks"])
+    ]
     result = await StubAnalyzer(settings).analyze(items)
     assert [a.id for a in result.analyses] == [i.id for i in items]
     assert result.calls == 0  # nothing was spent
@@ -39,11 +41,18 @@ async def test_stub_assigns_low_severity_to_praise(settings):
 def test_out_of_range_severity_is_rejected():
     """The guard that stops malformed model output reaching GitHub."""
     with pytest.raises(ValidationError):
-        ItemAnalysis(id="1", sentiment="negative", category="bug", severity=9,
-                     summary="x", theme="t")
+        ItemAnalysis(
+            id="1", sentiment="negative", category="bug", severity=9, summary="x", theme="t"
+        )
 
 
 def test_unknown_category_is_rejected():
     with pytest.raises(ValidationError):
-        ItemAnalysis(id="1", sentiment="negative", category="made_up", severity=3,
-                     summary="x", theme="t")
+        ItemAnalysis(
+            id="1",
+            sentiment="negative",
+            category="made_up",
+            severity=3,
+            summary="x",
+            theme="t",
+        )

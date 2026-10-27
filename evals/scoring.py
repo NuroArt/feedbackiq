@@ -50,11 +50,7 @@ def per_class_f1(gold: list[str], pred: list[str]) -> dict[str, dict[str, float]
         fn = sum(g == c and p != c for g, p in zip(gold, pred, strict=True))
         precision = tp / (tp + fp) if tp + fp else 0.0
         recall = tp / (tp + fn) if tp + fn else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if precision + recall
-            else 0.0
-        )
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
         out[c] = {
             "precision": round(precision, 4),
             "recall": round(recall, 4),
@@ -75,20 +71,14 @@ def macro_f1(gold: list[str], pred: list[str]) -> float:
     gold_classes = set(gold)
     if not gold_classes:
         return 0.0
-    return round(
-        sum(scores[c]["f1"] for c in gold_classes) / len(gold_classes), 4
-    )
+    return round(sum(scores[c]["f1"] for c in gold_classes) / len(gold_classes), 4)
 
 
 def confusion_pairs(gold: list[str], pred: list[str], top: int = 5) -> list[dict]:
     """The most common (gold -> predicted) mistakes. Turns a bad score into a
     diagnosis: 'usability is being read as bug 6 times' is actionable."""
-    wrong = Counter(
-        (g, p) for g, p in zip(gold, pred, strict=True) if g != p
-    )
-    return [
-        {"gold": g, "predicted": p, "count": n} for (g, p), n in wrong.most_common(top)
-    ]
+    wrong = Counter((g, p) for g, p in zip(gold, pred, strict=True) if g != p)
+    return [{"gold": g, "predicted": p, "count": n} for (g, p), n in wrong.most_common(top)]
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +138,7 @@ def cluster_shape(gold: list[str], pred: list[str]) -> dict[str, float]:
     """
     g, p = len(set(gold)), len(set(pred))
     # Pairs that gold says belong together and the model also grouped together.
-    same_gold = [
-        (a, b) for a, b in combinations(range(len(gold)), 2) if gold[a] == gold[b]
-    ]
+    same_gold = [(a, b) for a, b in combinations(range(len(gold)), 2) if gold[a] == gold[b]]
     kept = sum(1 for a, b in same_gold if pred[a] == pred[b])
     return {
         "gold_clusters": g,

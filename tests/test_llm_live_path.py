@@ -69,8 +69,9 @@ def tool_use_message(ids: list[str], *, input_tokens=100, output_tokens=50, **ov
     return SimpleNamespace(
         content=[
             SimpleNamespace(type="text", text="ignored preamble"),
-            SimpleNamespace(type="tool_use", name="record_analysis",
-                            input={"analyses": analyses}),
+            SimpleNamespace(
+                type="tool_use", name="record_analysis", input={"analyses": analyses}
+            ),
         ],
         usage=SimpleNamespace(input_tokens=input_tokens, output_tokens=output_tokens),
     )
@@ -242,7 +243,7 @@ async def test_items_are_split_into_batches():
 
     analyzer, fake = analyzer_with([respond], llm_batch_size=5)
     result = await analyzer.analyze(items(12))
-    assert len(fake.calls) == 3             # 5 + 5 + 2
+    assert len(fake.calls) == 3  # 5 + 5 + 2
     assert len(result.analyses) == 12
     assert result.calls == 3
 
@@ -253,7 +254,7 @@ async def test_one_failing_batch_does_not_lose_the_others():
 
     def respond(kwargs):
         state["n"] += 1
-        if state["n"] == 1:          # first batch always fails
+        if state["n"] == 1:  # first batch always fails
             raise status_error(500)
         content = kwargs["messages"][0]["content"]
         ids = [f"i{k}" for k in range(10) if f'"id": "i{k}"' in content]
@@ -291,9 +292,7 @@ async def test_concurrency_is_bounded():
         await asyncio.sleep(0.01)
         live["now"] -= 1
         content = kwargs["messages"][0]["content"]
-        return tool_use_message(
-            [f"i{k}" for k in range(40) if f'"id": "i{k}"' in content]
-        )
+        return tool_use_message([f"i{k}" for k in range(40) if f'"id": "i{k}"' in content])
 
     analyzer = LLMAnalyzer(live_settings(llm_batch_size=2))
 
@@ -323,7 +322,7 @@ def tool_choice_error() -> APIStatusError:
             "error": {
                 "type": "invalid_request_error",
                 "message": 'tool_choice: type "tool" and "any" are not supported '
-                           "for this model.",
+                "for this model.",
             },
         },
     )
@@ -361,9 +360,7 @@ async def test_downgrade_persists_across_batches():
         if state["n"] == 1:
             raise tool_choice_error()
         content = kwargs["messages"][0]["content"]
-        return tool_use_message(
-            [f"i{k}" for k in range(10) if f'"id": "i{k}"' in content]
-        )
+        return tool_use_message([f"i{k}" for k in range(10) if f'"id": "i{k}"' in content])
 
     analyzer, fake = analyzer_with([respond], llm_batch_size=2, llm_max_attempts=3)
     result = await analyzer.analyze(items(10))
@@ -386,9 +383,12 @@ async def test_permanent_error_carries_the_api_message():
     """A status code alone sends an operator to the logs to find the cause."""
     request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
     exc = APIStatusError(
-        "bad", response=httpx.Response(404, request=request),
-        body={"type": "error", "error": {"type": "not_found_error",
-                                         "message": "model: nonexistent-model"}},
+        "bad",
+        response=httpx.Response(404, request=request),
+        body={
+            "type": "error",
+            "error": {"type": "not_found_error", "message": "model: nonexistent-model"},
+        },
     )
     analyzer, _ = analyzer_with([exc], llm_max_attempts=1)
     with pytest.raises(LLMPermanentError) as caught:
@@ -418,13 +418,11 @@ async def test_concurrent_batches_all_survive_one_downgrade():
         async def create(self, **kwargs):
             mode = kwargs["tool_choice"]["type"]
             seen.append(mode)
-            await asyncio.sleep(0.01)      # let every batch get this far first
+            await asyncio.sleep(0.01)  # let every batch get this far first
             if mode == "tool":
                 raise tool_choice_error()
             content = kwargs["messages"][0]["content"]
-            return tool_use_message(
-                [f"i{k}" for k in range(20) if f'"id": "i{k}"' in content]
-            )
+            return tool_use_message([f"i{k}" for k in range(20) if f'"id": "i{k}"' in content])
 
     analyzer = LLMAnalyzer(live_settings(llm_batch_size=5, llm_max_attempts=3))
     analyzer.client = SimpleNamespace(messages=RacingClient())
@@ -442,8 +440,9 @@ async def test_truncated_response_is_an_error_not_a_silent_empty_result():
     as a successful batch, which is how a run silently produces no themes.
     """
     truncated = SimpleNamespace(
-        content=[SimpleNamespace(type="tool_use", name="record_analysis",
-                                 input={"analyses": []})],
+        content=[
+            SimpleNamespace(type="tool_use", name="record_analysis", input={"analyses": []})
+        ],
         usage=SimpleNamespace(input_tokens=2587, output_tokens=2000),
         stop_reason="max_tokens",
     )
@@ -457,8 +456,9 @@ async def test_truncated_response_is_an_error_not_a_silent_empty_result():
 async def test_empty_tool_payload_is_rejected():
     """A tool call with no entries is never a valid answer to 'analyze these'."""
     empty = SimpleNamespace(
-        content=[SimpleNamespace(type="tool_use", name="record_analysis",
-                                 input={"analyses": []})],
+        content=[
+            SimpleNamespace(type="tool_use", name="record_analysis", input={"analyses": []})
+        ],
         usage=SimpleNamespace(input_tokens=100, output_tokens=10),
         stop_reason="end_turn",
     )

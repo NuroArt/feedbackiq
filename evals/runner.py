@@ -148,16 +148,12 @@ async def score_once(gold_items: list[GoldItem], settings: Settings) -> dict:
     }
 
 
-async def run_eval(
-    settings: Settings, repeats: int, limit: int | None = None
-) -> dict:
+async def run_eval(settings: Settings, repeats: int, limit: int | None = None) -> dict:
     gold_items = load_golden_set(limit=limit)
     passes = [await score_once(gold_items, settings) for _ in range(repeats)]
 
     keys = passes[0]["metrics"].keys()
-    aggregated = {
-        k: aggregate([p["metrics"][k] for p in passes]).to_dict() for k in keys
-    }
+    aggregated = {k: aggregate([p["metrics"][k] for p in passes]).to_dict() for k in keys}
     stub = isinstance(build_analyzer(settings), StubAnalyzer)
     return {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -173,9 +169,7 @@ async def run_eval(
             "llm_calls": sum(p["cost"]["llm_calls"] for p in passes),
             "input_tokens": sum(p["cost"]["input_tokens"] for p in passes),
             "output_tokens": sum(p["cost"]["output_tokens"] for p in passes),
-            "duration_seconds": round(
-                sum(p["cost"]["duration_seconds"] for p in passes), 2
-            ),
+            "duration_seconds": round(sum(p["cost"]["duration_seconds"] for p in passes), 2),
         },
     }
 
@@ -218,14 +212,11 @@ def evaluate_gates(report: dict, thresholds: dict, baseline: dict | None) -> lis
             delta = value - prior
             finding["baseline"] = round(prior, 4)
             finding["delta"] = round(delta, 4)
-            regressed = (
-                delta > tolerance if lower_better else delta < -tolerance
-            )
+            regressed = delta > tolerance if lower_better else delta < -tolerance
             if regressed:
                 finding["status"] = "fail"
                 finding["reason"] = (
-                    f"regressed {abs(delta):.3f} vs baseline "
-                    f"(tolerance {tolerance})"
+                    f"regressed {abs(delta):.3f} vs baseline (tolerance {tolerance})"
                 )
         findings.append(finding)
     return findings
@@ -259,16 +250,13 @@ def render_markdown(report: dict, findings: list[dict]) -> str:
 
     if failed:
         lines += ["", "### Failures", ""]
-        lines += [
-            f"- `{f['metric']}` {f['value']:.3f} — {f['reason']}" for f in failed
-        ]
+        lines += [f"- `{f['metric']}` {f['value']:.3f} — {f['reason']}" for f in failed]
 
     confusions = report["diagnostics"]["category_confusions"]
     if confusions:
         lines += ["", "### Top category confusions", ""]
         lines += [
-            f"- `{c['gold']}` read as `{c['predicted']}` x{c['count']}"
-            for c in confusions
+            f"- `{c['gold']}` read as `{c['predicted']}` x{c['count']}" for c in confusions
         ]
 
     weak = sorted(
@@ -290,27 +278,35 @@ def render_markdown(report: dict, findings: list[dict]) -> str:
         f"pair recall {cl['pair_recall']:.2f}.",
     ]
     if report["diagnostics"]["missing_ids"]:
-        lines.append(
-            f"Unreturned items: `{', '.join(report['diagnostics']['missing_ids'])}`"
-        )
+        lines.append(f"Unreturned items: `{', '.join(report['diagnostics']['missing_ids'])}`")
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the golden-set eval.")
-    parser.add_argument("--repeats", type=int, default=1,
-                        help="Passes over the set; >1 measures run-to-run variance.")
-    parser.add_argument("--profile", choices=["live", "stub"], default=None,
-                        help="Default: live when a key is present, else stub.")
+    parser.add_argument(
+        "--repeats",
+        type=int,
+        default=1,
+        help="Passes over the set; >1 measures run-to-run variance.",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=["live", "stub"],
+        default=None,
+        help="Default: live when a key is present, else stub.",
+    )
     parser.add_argument("--limit", type=int, default=None, help="Score the first N items.")
     parser.add_argument("--out", type=Path, default=Path("eval-report.json"))
     parser.add_argument("--markdown", type=Path, default=Path("eval-report.md"))
     parser.add_argument("--baseline", type=Path, default=BASELINE)
-    parser.add_argument("--update-baseline", action="store_true",
-                        help="Write this run's scores as the new baseline.")
-    parser.add_argument("--no-gate", action="store_true",
-                        help="Report only; always exit 0.")
+    parser.add_argument(
+        "--update-baseline",
+        action="store_true",
+        help="Write this run's scores as the new baseline.",
+    )
+    parser.add_argument("--no-gate", action="store_true", help="Report only; always exit 0.")
     args = parser.parse_args(argv)
 
     settings = Settings(llm_offline_mode=args.profile == "stub")
@@ -321,9 +317,7 @@ def main(argv: list[str] | None = None) -> int:
     report = asyncio.run(run_eval(settings, args.repeats, args.limit))
 
     thresholds = json.loads(THRESHOLDS.read_text())
-    baseline = (
-        json.loads(args.baseline.read_text()) if args.baseline.exists() else None
-    )
+    baseline = json.loads(args.baseline.read_text()) if args.baseline.exists() else None
     # Only compare like with like: a stub baseline must not gate a live run.
     if baseline and baseline.get("profile") != report["profile"]:
         baseline = None

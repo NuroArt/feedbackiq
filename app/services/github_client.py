@@ -153,10 +153,14 @@ class GitHubClient:
                 or resp.headers.get("x-ratelimit-remaining") == "0"
             )
             if throttled and attempt < attempts:
-                wait = float(resp.headers.get("retry-after", 2 ** attempt))
+                wait = float(resp.headers.get("retry-after", 2**attempt))
                 INTEGRATION_CALLS.labels("github", "rate_limited").inc()
-                log.warning("github_rate_limited", wait_seconds=wait,
-                            attempt=attempt, detail=detail[:120])
+                log.warning(
+                    "github_rate_limited",
+                    wait_seconds=wait,
+                    attempt=attempt,
+                    detail=detail[:120],
+                )
                 await asyncio.sleep(min(wait, 60))
                 continue
 
@@ -243,27 +247,36 @@ class GitHubClient:
                 # to an existing issue, so no duplicate was filed. Failing to
                 # append the comment is a lesser, separate problem and must not
                 # be reported as if dedup broke.
-                log.warning("github_comment_failed", issue=number,
-                            theme=theme.name, error=exc.message)
+                log.warning(
+                    "github_comment_failed", issue=number, theme=theme.name, error=exc.message
+                )
                 return ActionRecord(
                     provider="github",
                     action="comment_on_issue",
                     status="failed",
                     target=url,
-                    detail=(f"Matched existing issue #{number} "
-                            f"(similarity {score:.2f}) so no duplicate was filed, "
-                            f"but the comment could not be posted: {exc.message}"),
+                    detail=(
+                        f"Matched existing issue #{number} "
+                        f"(similarity {score:.2f}) so no duplicate was filed, "
+                        f"but the comment could not be posted: {exc.message}"
+                    ),
                 )
 
-            log.info("github_issue_updated", issue=number, theme=theme.name,
-                     similarity=round(score, 3))
+            log.info(
+                "github_issue_updated",
+                issue=number,
+                theme=theme.name,
+                similarity=round(score, 3),
+            )
             return ActionRecord(
                 provider="github",
                 action="comment_on_issue",
                 status="created",
                 target=url,
-                detail=(f"Matched existing issue #{number} "
-                        f"(similarity {score:.2f}); appended run {run_id}."),
+                detail=(
+                    f"Matched existing issue #{number} "
+                    f"(similarity {score:.2f}); appended run {run_id}."
+                ),
             )
 
         resp = await self._request(

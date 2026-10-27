@@ -42,8 +42,8 @@ def test_macro_f1_punishes_minority_class_collapse():
     gold = ["bug"] * 18 + ["docs"] * 2
     # Stops predicting `docs` entirely.
     pred = ["bug"] * 20
-    assert accuracy(gold, pred) == 0.9           # looks fine
-    assert macro_f1(gold, pred) < 0.5            # is not fine
+    assert accuracy(gold, pred) == 0.9  # looks fine
+    assert macro_f1(gold, pred) < 0.5  # is not fine
 
 
 def test_macro_f1_ignores_hallucinated_classes():
@@ -59,8 +59,8 @@ def test_macro_f1_ignores_hallucinated_classes():
 def test_per_class_f1_reports_support_from_gold():
     scores = per_class_f1(["bug", "bug", "docs"], ["bug", "docs", "docs"])
     assert scores["bug"]["support"] == 2
-    assert scores["bug"]["precision"] == 1.0      # 1 predicted bug, correct
-    assert scores["bug"]["recall"] == 0.5         # 1 of 2 found
+    assert scores["bug"]["precision"] == 1.0  # 1 predicted bug, correct
+    assert scores["bug"]["recall"] == 0.5  # 1 of 2 found
 
 
 def test_severity_treats_near_misses_as_near():
@@ -74,9 +74,9 @@ def test_severity_treats_near_misses_as_near():
 
 def test_severity_bias_detects_systematic_over_escalation():
     s = severity_scores([2, 2, 2, 2], [4, 4, 4, 4])
-    assert s["bias"] == 2.0        # positive = floods the issue tracker
+    assert s["bias"] == 2.0  # positive = floods the issue tracker
     s2 = severity_scores([4, 4], [2, 2])
-    assert s2["bias"] == -2.0      # negative = misses real incidents
+    assert s2["bias"] == -2.0  # negative = misses real incidents
 
 
 def test_ari_is_one_for_identical_partitions_regardless_of_naming():
@@ -166,19 +166,27 @@ def _report(**metrics) -> dict:
         "metrics": {k: {"mean": v, "spread": 0.0} for k, v in metrics.items()},
         "diagnostics": {
             "category_confusions": [],
-            "category_per_class": {"bug": {"f1": 0.9, "precision": 0.9,
-                                           "recall": 0.9, "support": 10}},
-            "clustering": {"gold_clusters": 12, "predicted_clusters": 12,
-                           "cluster_ratio": 1.0, "pair_recall": 0.9},
+            "category_per_class": {
+                "bug": {"f1": 0.9, "precision": 0.9, "recall": 0.9, "support": 10}
+            },
+            "clustering": {
+                "gold_clusters": 12,
+                "predicted_clusters": 12,
+                "cluster_ratio": 1.0,
+                "pair_recall": 0.9,
+            },
             "missing_ids": [],
         },
         "cost": {"duration_seconds": 1.0, "input_tokens": 10, "output_tokens": 5},
-        "model": "test", "items": 50, "repeats": 1,
+        "model": "test",
+        "items": 50,
+        "repeats": 1,
     }
 
 
-THRESHOLDS = {"live": {"category_macro_f1": 0.75, "severity_mae": 0.75,
-                       "regression_tolerance": 0.03}}
+THRESHOLDS = {
+    "live": {"category_macro_f1": 0.75, "severity_mae": 0.75, "regression_tolerance": 0.03}
+}
 
 
 def test_metric_below_floor_fails():
@@ -205,9 +213,10 @@ def test_lower_is_better_metric_inverts_the_comparison():
 
 def test_regression_against_baseline_fails_even_when_above_the_floor():
     """The slow-slide gate: 0.82 clears the 0.75 floor but is 0.08 down."""
-    baseline = {"profile": "live",
-                "metrics": {"category_macro_f1": {"mean": 0.90},
-                            "severity_mae": {"mean": 0.50}}}
+    baseline = {
+        "profile": "live",
+        "metrics": {"category_macro_f1": {"mean": 0.90}, "severity_mae": {"mean": 0.50}},
+    }
     findings = evaluate_gates(
         _report(category_macro_f1=0.82, severity_mae=0.50), THRESHOLDS, baseline
     )
@@ -219,9 +228,10 @@ def test_regression_against_baseline_fails_even_when_above_the_floor():
 
 def test_drift_within_tolerance_passes():
     """Run-to-run noise must not fail a build, or the gate gets ignored."""
-    baseline = {"profile": "live",
-                "metrics": {"category_macro_f1": {"mean": 0.90},
-                            "severity_mae": {"mean": 0.50}}}
+    baseline = {
+        "profile": "live",
+        "metrics": {"category_macro_f1": {"mean": 0.90}, "severity_mae": {"mean": 0.50}},
+    }
     findings = evaluate_gates(
         _report(category_macro_f1=0.88, severity_mae=0.52), THRESHOLDS, baseline
     )
@@ -229,9 +239,10 @@ def test_drift_within_tolerance_passes():
 
 
 def test_improvement_never_fails():
-    baseline = {"profile": "live",
-                "metrics": {"category_macro_f1": {"mean": 0.80},
-                            "severity_mae": {"mean": 0.60}}}
+    baseline = {
+        "profile": "live",
+        "metrics": {"category_macro_f1": {"mean": 0.80}, "severity_mae": {"mean": 0.60}},
+    }
     findings = evaluate_gates(
         _report(category_macro_f1=0.95, severity_mae=0.20), THRESHOLDS, baseline
     )
@@ -271,8 +282,13 @@ def test_thresholds_file_covers_every_gated_metric():
             and k not in {"regression_tolerance", "regression_tolerance_overrides"}
         }
         assert keys == {
-            "sentiment_accuracy", "category_accuracy", "category_macro_f1",
-            "severity_within_1", "severity_mae", "theme_ari", "coverage",
+            "sentiment_accuracy",
+            "category_accuracy",
+            "category_macro_f1",
+            "severity_within_1",
+            "severity_mae",
+            "theme_ari",
+            "coverage",
         }
 
 
@@ -297,36 +313,42 @@ TOLERANCE_PROFILE = {
 
 
 def test_override_lets_a_noisy_metric_drift_within_its_own_tolerance():
-    baseline = {"profile": "live",
-                "metrics": {"category_macro_f1": {"mean": 0.98},
-                            "severity_mae": {"mean": 0.28}}}
+    baseline = {
+        "profile": "live",
+        "metrics": {"category_macro_f1": {"mean": 0.98}, "severity_mae": {"mean": 0.28}},
+    }
     # +0.14 on MAE is one observed spread -- noise, not a regression.
     findings = evaluate_gates(
         _report(category_macro_f1=0.98, severity_mae=0.42),
-        TOLERANCE_PROFILE, baseline,
+        TOLERANCE_PROFILE,
+        baseline,
     )
     assert all(f["status"] == "pass" for f in findings)
 
 
 def test_override_still_catches_a_real_regression():
-    baseline = {"profile": "live",
-                "metrics": {"category_macro_f1": {"mean": 0.98},
-                            "severity_mae": {"mean": 0.28}}}
+    baseline = {
+        "profile": "live",
+        "metrics": {"category_macro_f1": {"mean": 0.98}, "severity_mae": {"mean": 0.28}},
+    }
     findings = evaluate_gates(
-        _report(category_macro_f1=0.98, severity_mae=0.70),   # +0.42, past 0.3
-        TOLERANCE_PROFILE, baseline,
+        _report(category_macro_f1=0.98, severity_mae=0.70),  # +0.42, past 0.3
+        TOLERANCE_PROFILE,
+        baseline,
     )
     mae = next(f for f in findings if f["metric"] == "severity_mae")
     assert mae["status"] == "fail" and "regressed" in mae["reason"]
 
 
 def test_metrics_without_an_override_keep_the_global_tolerance():
-    baseline = {"profile": "live",
-                "metrics": {"category_macro_f1": {"mean": 0.98},
-                            "severity_mae": {"mean": 0.28}}}
+    baseline = {
+        "profile": "live",
+        "metrics": {"category_macro_f1": {"mean": 0.98}, "severity_mae": {"mean": 0.28}},
+    }
     findings = evaluate_gates(
-        _report(category_macro_f1=0.90, severity_mae=0.28),   # -0.08, past 0.03
-        TOLERANCE_PROFILE, baseline,
+        _report(category_macro_f1=0.90, severity_mae=0.28),  # -0.08, past 0.03
+        TOLERANCE_PROFILE,
+        baseline,
     )
     f1 = next(f for f in findings if f["metric"] == "category_macro_f1")
     assert f1["status"] == "fail"
@@ -336,7 +358,8 @@ def test_documentation_keys_are_not_treated_as_metrics():
     """Keys starting with _ carry provenance, not thresholds."""
     findings = evaluate_gates(
         _report(category_macro_f1=0.98, severity_mae=0.28),
-        TOLERANCE_PROFILE, None,
+        TOLERANCE_PROFILE,
+        None,
     )
     assert {f["metric"] for f in findings} == {"category_macro_f1", "severity_mae"}
 
