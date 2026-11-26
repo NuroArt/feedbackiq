@@ -1,6 +1,6 @@
 # Golden set
 
-50 hand-labelled feedback items in `golden_set.jsonl`, used to put a number on
+50 labelled feedback items in `golden_set.jsonl`, used to put a number on
 classification quality so prompt and model changes can be reviewed as a diff.
 
 ## Schema
