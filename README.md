@@ -12,7 +12,7 @@ POST /v1/feedback/analyze  ->  classify (LLM)  ->  cluster  ->  rank
 
 ## Classification quality is measured, not asserted
 
-Prompt changes are otherwise unreviewable — a diff shows the words that changed, not whether the output got worse. A 50-item hand-labelled golden set puts a number on it, and CI gates on that number.
+Prompt changes are otherwise unreviewable — a diff shows the words that changed, not whether the output got worse. A 50-item labelled golden set puts a number on it, and CI gates on that number.
 
 ```
 ## Golden-set eval — PASS
@@ -111,7 +111,7 @@ app/
     pipeline.py       orchestration, clustering, ranking, graceful degradation
   static/index.html   operator UI
 evals/
-  golden_set.jsonl    50 hand-labelled items with gold theme clusters
+  golden_set.jsonl    50 labelled items with gold theme clusters
   scoring.py          accuracy, macro-F1, severity MAE, Adjusted Rand Index
   runner.py           repeats, baseline diffing, JSON + markdown report, exit codes
   thresholds.json     per-profile floors and regression tolerance
